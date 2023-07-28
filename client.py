@@ -39,3 +39,4 @@ def get_next_state(action) -> tuple(int, int, int):
 
 print (f"reward: {reward}, state: {state}")
 
+"""guardar o valor do reward pra cada plataforma para ser usado na inicialização"""
