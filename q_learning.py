@@ -81,7 +81,7 @@ class q_learning:
             print(f"Epoch: {i} complete [=========================================]")
             print(f"Acuracy: {aux.evaluate_table(self.BEST_ACTIONS, self.Q_MATRIX)}%")
 
-        aux.write_q_matrix("resultado.txt")
+        self.write_q_matrix("resultado.txt")
 
 # ======================================== Helper Functions =============================================
 

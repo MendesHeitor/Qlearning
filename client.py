@@ -47,13 +47,13 @@ def main():
     # =========== Training Setup ===========
 
     # Initial state -> need to be equal to the initial state of the game -> must check
-    platform = 0
+    platform = 17
     direction = DIRECTIONS["NORTH"]
     
-    ql.train_one_source(port=2037, epochs=50, initial_plat=platform, initial_dir=direction, alpha=0.12, gamma=0.75)
+    ql.train_one_source(port=2037, epochs=1000, initial_plat=platform, initial_dir=direction, alpha=0.12, gamma=0.75)
 
     Q_MATRIX = aux.read_q_matrix("resultado.txt")
-    aux.evaluate_table(BEST_ACTIONS, Q_MATRIX)
+    print(f"Final accuracy: {aux.evaluate_table(BEST_ACTIONS, Q_MATRIX)}")
 
 if  __name__ == "__main__":
     main()
