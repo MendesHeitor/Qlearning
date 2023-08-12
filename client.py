@@ -1,131 +1,59 @@
-import connection as cn
-import random as r
+from q_learning import q_learning, aux
 
-s = cn.connect(2037)
+def main():
+    # ======================================== Constants =============================================
+    ROWS = 96
+    COLS = 3
 
-ROWS = 96
-COLS = 3
+    ACTIONS = ["left", "jump", "right"]
+    DIRECTIONS = {"NORTH":0, "EAST":1, "SOUTH":2, "WEST":3}
 
-ACTIONS = ["left", "jump", "right"]
-DIRECTIONS = {"NORTH":00, "EAST":1, "SOUTH":2, "WEST":3}
+    #Initializing the Q matrix -> 96 rows and 3 columns
+    Q_MATRIX = [[0 for _ in range(COLS)] for _ in range(ROWS)]
 
-Q_MATRIX = [[0 for _ in range(COLS)] for _ in range(ROWS)]
+    # Reward array for each platform -> used only in the initialization of the training
+    REWARDS = [-14, -13, -12, -11, -10, -9, -8, -7, -6, -5, -4, -3, -2, -1, -10, -8, -6, -12, -7, -5, -4, -3, -2, -1]
 
-# Reward array for each platform -> used only in the initialization of the training
-REWARDS = [-14, -13, -12, -11, -10, -9, -8, -7, -6, -5, -4, -3, -2, -1, -10, -8, -6, -12, -7, -5, -4, -3, -2, -1]
+    BEST_ACTIONS = [
+        [1], [2], [0, 2], [0],
+        [0], [1], [2], [0, 2],
+        [0, 2], [0], [1], [2],
+        [0, 2], [0], [1], [2],
+        [0], [1], [1], [2],
+        [0, 1], [1], [2], [0, 2],
+        [0], [1], [2], [0, 2],
+        [1], [1, 2], [0, 2], [0],
+        [0], [1], [2], [0, 2],
+        [0], [1], [2], [0, 2],
+        [0], [1], [2], [0, 2],
+        [0, 2], [0], [1], [2],
+        [0, 2], [0], [1], [2],
+        [0], [1], [2], [0, 2],
+        [1], [2], [0, 2], [0],
+        [1], [2], [0, 2], [0],
+        [1], [2], [0, 2], [0],
+        [0], [1], [2], [0, 2],
+        [0], [1], [2], [0, 2],
+        [0], [1], [2], [0, 2],
+        [0], [1], [2], [0, 2],
+        [1], [2], [0, 2], [0],
+        [1], [2], [0, 2], [0],
+        [0], [1], [2], [0, 2]
+    ]
 
-def state_unpack(state: str) -> (int, int):
-    """
-    Unpack the state into a tuple containing platform and direction
-    """
-    platform = int(state[2:7], 2)
-    direction = int(state[7:], 2)
-
-    return platform, direction
-
-def state_pack(platform: int, direction: int) -> str:
-    """
-    Pack the state into a string
-    """
-    return '0b' + format(platform, '05b') + format(direction, '02b')
-
-def convert_to_int(state: str) -> str:
-    """
-    Convert the state string to int
-    """
-    return int(state[2:], 2)
-
-def choose_action() -> int:
-    """
-    Choose a random action to take:
-
-    1 - turn left
-    2 - jump
-    3 - turn right
-    """
-    random_n = r.randint(0, 2)
-    return random_n
-
-def check_terminal(reward:int) -> bool:
-    """
-    Check if the game is in a terminal state
-    """
-    if reward == -100 or reward == 300:
-        return True
-    else:
-        return False
-
-def q_update(state:bin, action:int, next_state:bin, reward:int, alpha:float, gamma:float) -> float:
-    """
-    Update the Q matrix: Uses bellman equation
+    # =========== Q-Learning Object ===========
+    ql = q_learning(ROWS, COLS, Q_MATRIX, ACTIONS, DIRECTIONS, REWARDS, BEST_ACTIONS)
     
-    alpha -> learning rate
-    gamma -> discount factor
-    """
-    estimate_q = reward + gamma * max(Q_MATRIX[next_state])
-    q_value = Q_MATRIX[state][action] + alpha * (estimate_q - Q_MATRIX[state][action])
+    # =========== Training Setup ===========
 
-    return q_value
-
-def write_q_matrix(filename:str) -> None:
-    """
-    Write the Q matrix to a txt file
-    """
-    with open(filename, 'w') as file:
-        for row in Q_MATRIX:
-            file.write(" ".join(map(str, row)) + '\n')
-
-def read_q_matrix(filename:str) -> list:
-    """
-    Read the Q matrix from a txt file
-    """
-    q_matrix = []
-    with open(filename, 'r') as file:
-        for line in file:
-            row = list(map(float, line.strip().split()))
-            q_matrix.append(row)
-    return q_matrix
-
-def print_table():
-    """
-    Print the Q matrix
-    """
-    for i in range(ROWS):
-        print(Q_MATRIX[i])
-
-# Prepare Training
-
-# Initial state -> need to be equal to the initial state of the game -> must check
-platform = 0
-direction = DIRECTIONS["NORTH"]
-state = state_pack(platform, direction)
-
-# Initial reward
-reward = REWARDS[platform] 
-
-# Hyperparameters: learning rate and discount factor, respectively
-alpha = 0.15
-gamma = 0.7
-
-Q_MATRIX = read_q_matrix("resultado.txt")
-
-# Training Loop
-for i in range(1000):
-
-    terminal_state = False
-
-    while(not terminal_state):
-        action = choose_action()
-        next_state, reward_next = cn.get_state_reward(s, ACTIONS[action])
-
-        Q_MATRIX[convert_to_int(state)][action] = q_update(convert_to_int(state), action, convert_to_int(next_state), reward, alpha, gamma)
-        
-        reward = reward_next
-        state = next_state
-
-        terminal_state = check_terminal(reward)
+    # Initial state -> need to be equal to the initial state of the game -> must check
+    platform = 0
+    direction = DIRECTIONS["NORTH"]
     
-    print(f"=============================== Epoch:  {i}   ======================================")
-    print_table()
+    ql.train_one_source(port=2037, epochs=50, initial_plat=platform, initial_dir=direction, alpha=0.12, gamma=0.75)
 
-write_q_matrix("resultado.txt")
+    Q_MATRIX = aux.read_q_matrix("resultado.txt")
+    aux.evaluate_table(BEST_ACTIONS, Q_MATRIX)
+
+if  __name__ == "__main__":
+    main()
