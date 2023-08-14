@@ -2,13 +2,12 @@ import random as r
 import connection as cn
 
 class q_learning:
-    def __init__(self, rows, cols, q_matrix, actions, directions, rewards, best_actions):
+    def __init__(self, rows, cols, q_matrix, actions, directions, best_actions):
         self.ROWS = rows
         self.COLS = cols
         self.Q_MATRIX = q_matrix
         self.ACTIONS = actions
         self.DIRECTIONS = directions
-        self.REWARDS = rewards
         self.BEST_ACTIONS = best_actions
 
     def q_update(self, state:bin, action:int, next_state:bin, reward:int, alpha:float, gamma:float) -> float:
@@ -38,7 +37,20 @@ class q_learning:
         for i in range(self.ROWS):
             print(self.Q_MATRIX[i])
     
-    def train_one_source(self, port:int, initial_plat:int, initial_dir:int,  epochs:int, alpha:float, gamma:float) -> None:
+    def choose_action(self, epsilon, state) -> int:
+        """
+        Chooses a actions based on eploitation and exploration
+
+        0 -> left
+        1 -> jump
+        2 -> right
+        """
+        if r.random() < epsilon:
+            return r.randint(0, 2)
+
+        return self.Q_MATRIX[aux.convert_to_int(state)].index(max(self.Q_MATRIX[aux.convert_to_int(state)]))
+    
+    def train_one_source(self, port:int, initial_plat:int, initial_dir:int,  epochs:int, alpha:float, gamma:float, epsilon:float) -> None:
         """
         Train the Q matrix for one source
             parameters:
@@ -57,9 +69,6 @@ class q_learning:
         direction = initial_dir
         state = aux.state_pack(platform, direction)
 
-        # Initial reward
-        reward = self.REWARDS[platform] 
-
         self.Q_MATRIX = aux.read_q_matrix("resultado.txt")
 
         # ========= Training =========
@@ -68,15 +77,14 @@ class q_learning:
             terminal_state = False
 
             while(not terminal_state):
-                action = aux.choose_action()
+                action = self.choose_action(epsilon, state)
                 next_state, reward_next = cn.get_state_reward(s, self.ACTIONS[action])
 
-                self.Q_MATRIX[aux.convert_to_int(state)][action] = self.q_update(aux.convert_to_int(state), action, aux.convert_to_int(next_state), reward, alpha, gamma)
+                self.Q_MATRIX[aux.convert_to_int(state)][action] = self.q_update(aux.convert_to_int(state), action, aux.convert_to_int(next_state), reward_next, alpha, gamma)
                 
-                reward = reward_next
                 state = next_state
 
-                terminal_state = aux.check_terminal(reward)
+                terminal_state = aux.check_terminal(reward_next)
             
             print(f"Epoch: {i} complete [=========================================]")
             print(f"Acuracy: {aux.evaluate_table(self.BEST_ACTIONS, self.Q_MATRIX)}%")
@@ -109,18 +117,6 @@ class aux:
         Convert the state string to int
         """
         return int(state[2:], 2)
-
-    @classmethod
-    def choose_action(self) -> int:
-        """
-        Choose a random action to take:
-
-        1 - turn left
-        2 - jump
-        3 - turn right
-        """
-        random_n = r.randint(0, 2)
-        return random_n
 
     @classmethod
     def check_terminal(self, reward:int) -> bool:
@@ -162,4 +158,13 @@ class aux:
             if q_table[state].index(max(q_table[state])) in best_actions[state]:
                 correct += 1
         return correct / len(q_table) * 100
-        
+
+    @classmethod
+    def clear_table_txt(self, filename:str, rows:int, cols:int) -> None:
+        """
+        Clear the table
+        """
+        row = [0.000000 for _ in range(cols)]
+        with open(filename, 'w') as file:
+            for _ in range(rows):
+                file.write(" ".join(map(str, row)) + '\n')
