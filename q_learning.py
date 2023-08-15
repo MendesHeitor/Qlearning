@@ -2,6 +2,7 @@ import random as r
 import connection as cn
 
 class q_learning:
+
     def __init__(self, rows, cols, q_matrix, actions, directions, best_actions):
         self.ROWS = rows
         self.COLS = cols
@@ -9,6 +10,7 @@ class q_learning:
         self.ACTIONS = actions
         self.DIRECTIONS = directions
         self.BEST_ACTIONS = best_actions
+        self.FIRST = [True for _ in range(self.ROWS)]
 
     def q_update(self, state:bin, action:int, next_state:bin, reward:int, alpha:float, gamma:float) -> float:
         """
@@ -44,8 +46,9 @@ class q_learning:
         0 -> left
         1 -> jump
         2 -> right
-        """
-        if r.random() < epsilon:
+        """        
+        if r.random() < epsilon or self.FIRST[aux.convert_to_int(state)]:
+            self.FIRST[aux.convert_to_int(state)] = False
             return r.randint(0, 2)
 
         return self.Q_MATRIX[aux.convert_to_int(state)].index(max(self.Q_MATRIX[aux.convert_to_int(state)]))
@@ -64,6 +67,10 @@ class q_learning:
         # Connection with unity game
         s = cn.connect(port)
 
+        # check if the final goalwas reached at least 1/5 of the epochs -> if so, deacrease alpha in 10% and increase gamma in 5%
+        target_reach = epochs // 4
+        target_reached = 0
+
         # Initial state -> need to be equal to the initial state of the game -> must check
         platform = initial_plat 
         direction = initial_dir
@@ -76,6 +83,12 @@ class q_learning:
         for i in range(epochs):
             terminal_state = False
 
+            if target_reached >= target_reach:
+                alpha *= 0.9
+                gamma *= 1.05
+                epsilon = 0.05
+                target_reached = 0
+
             while(not terminal_state):
                 action = self.choose_action(epsilon, state)
                 next_state, reward_next = cn.get_state_reward(s, self.ACTIONS[action])
@@ -85,9 +98,13 @@ class q_learning:
                 state = next_state
 
                 terminal_state = aux.check_terminal(reward_next)
+
+                if reward_next == 300:
+                    target_reached += 1
             
             print(f"Epoch: {i} complete [=========================================]")
             print(f"Acuracy: {aux.evaluate_table(self.BEST_ACTIONS, self.Q_MATRIX)}%")
+            self.write_q_matrix("resultado.txt")
 
         self.write_q_matrix("resultado.txt")
 
@@ -152,6 +169,7 @@ class aux:
     def evaluate_table(self, best_actions:[[int]], q_table:[[float]]) -> float:
         """
         Evaluate the table based on a ideal table, returns the accuracy (%) of the table
+         => innacurate
         """
         correct = 0
         for state in range(len(q_table)):
