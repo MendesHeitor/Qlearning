@@ -7,56 +7,28 @@ def main():
     ROWS = 96
     COLS = 3
 
-    ACTIONS = ["left", "jump", "right"]
+    ACTIONS = ["left", "right", "jump"]
     DIRECTIONS = {"NORTH":0, "EAST":1, "SOUTH":2, "WEST":3}
 
     #Initializing the Q matrix -> 96 rows and 3 columns
     Q_MATRIX = [[0 for _ in range(COLS)] for _ in range(ROWS)]
 
-    BEST_ACTIONS = [
-        [1], [2], [0, 2], [0],
-        [0], [1], [2], [0, 2],
-        [0, 2], [0], [1], [2],
-        [0, 2], [0], [1], [2],
-        [0], [1], [1], [2],
-        [0, 1], [1], [2], [0, 2],
-        [0], [1], [2], [0, 2],
-        [1], [1, 2], [0, 2], [0],
-        [0], [1], [2], [0, 2],
-        [0], [1], [2], [0, 2],
-        [0], [1], [2], [0, 2],
-        [0, 2], [0], [1], [2],
-        [0, 2], [0], [1], [2],
-        [0], [1], [2], [0, 2],
-        [1], [2], [0, 2], [0],
-        [1], [2], [0, 2], [0],
-        [1], [2], [0, 2], [0],
-        [0], [1], [2], [0, 2],
-        [0], [1], [2], [0, 2],
-        [0], [1], [2], [0, 2],
-        [0], [1], [2], [0, 2],
-        [1], [2], [0, 2], [0],
-        [1], [2], [0, 2], [0],
-        [0], [1], [2], [0, 2]
-    ]
-
     # =========== Q-Learning Trainer ===========
-    ql = q_learning(ROWS, COLS, Q_MATRIX, ACTIONS, DIRECTIONS, BEST_ACTIONS)
+    ql = q_learning(ROWS, COLS, Q_MATRIX, ACTIONS, DIRECTIONS)
       
 
     # =========== Training Setup ===========
 
     # Initial state -> need to be equal to the initial state of the game -> must check
-    platform = 17
+    platform = 0
     direction = DIRECTIONS["NORTH"]
     
     # =========== Training ===========
-    # aux.clear_table_txt("resultado.txt", ROWS, COLS) 
-    ql.train_one_source(port=2037, epochs=100, initial_plat=platform, initial_dir=direction, alpha=0.45, gamma=0.9, epsilon=0.08)
+    # aux.clear_table_txt("resultado.txt", ROWS, COLS)
+    ql.train_one_source(port=2037, epochs=3000, initial_plat=platform, initial_dir=direction, alpha=0.6, gamma=0.75, epsilon=0.15)
 
-    
-    Q_MATRIX = aux.read_q_matrix("resultado.txt")
-    print(f"Final accuracy: {aux.evaluate_table(BEST_ACTIONS, Q_MATRIX)}")
+    # =========== Trying to reach the goal using the built Q matrix ===========
+    aux.q_table_runner(filename="resultado.txt", port=2037, initial_plat=platform, initial_dir=direction)
 
 if  __name__ == "__main__":
     main()
