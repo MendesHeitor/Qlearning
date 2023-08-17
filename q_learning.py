@@ -3,13 +3,12 @@ import connection as cn
 
 class q_learning:
 
-    def __init__(self, rows, cols, q_matrix, actions, directions):
+    def __init__(self, rows, cols, actions, directions, filename):
         self.ROWS = rows
         self.COLS = cols
-        self.Q_MATRIX = q_matrix
+        self.Q_MATRIX = aux.read_q_matrix(filename)
         self.ACTIONS = actions
         self.DIRECTIONS = directions
-        self.FIRST = [True for _ in range(self.ROWS)]
 
     def q_update(self, state:bin, action:int, next_state:bin, reward:int, alpha:float, gamma:float) -> float:
         """
@@ -23,27 +22,34 @@ class q_learning:
 
         return q_value
 
-    def write_q_matrix(self, filename:str) -> None:
+    def q_table_runner(self, port:int, initial_plat:int, initial_dir:str) -> None:
         """
-        Write the Q matrix to a txt file
+        Run the table
         """
-        with open(filename, 'w') as file:
-            for row in self.Q_MATRIX:
-                file.write(" ".join(map(str, row)) + '\n')
-    
-    def choose_action(self, epsilon, state) -> int:
-        """
-        Chooses a actions based on eploitation and exploration
+        won = False
 
-        0 -> left
-        1 -> right
-        2 -> jump
-        """        
-        if r.random() < epsilon or self.FIRST[aux.convert_to_int(state)]:
-            self.FIRST[aux.convert_to_int(state)] = False
-            return r.randint(0, 2)
+        s = cn.connect(port)
 
-        return self.Q_MATRIX[aux.convert_to_int(state)].index(max(self.Q_MATRIX[aux.convert_to_int(state)]))
+        platform = initial_plat 
+        direction = initial_dir
+        state = aux.state_pack(platform, direction)
+
+        terminal_state = False
+
+        while not terminal_state:
+            action = aux.choose_action(-1, state, self.Q_MATRIX)
+            next_state, reward_next = cn.get_state_reward(s, self.ACTIONS[action])
+            state = next_state
+
+            # Check for terminal state
+            if reward_next == 300:
+                terminal_state = True
+                won = True
+            elif reward_next == -100:
+                terminal_state = True
+        
+        print(f"Game won: {won}")
+
     
     def train_one_source(self, port:int, initial_plat:int, initial_dir:int,  epochs:int, alpha:float, gamma:float, epsilon:float) -> None:
         """
@@ -55,6 +61,7 @@ class q_learning:
                 alpha -> learning rate
                 gamma -> discount factor
         """
+        back_to_back_wins = 0
 
         wins = 0
         deaths = 0
@@ -67,17 +74,18 @@ class q_learning:
         direction = initial_dir
         state = aux.state_pack(platform, direction)
 
-        self.Q_MATRIX = aux.read_q_matrix("resultado.txt")
-
         # ========= Training =========
 
         try:
             for i in range(epochs):
 
                 terminal_state = False
+                
+                if(back_to_back_wins == 10):
+                    break
 
                 while (not terminal_state):
-                    action = self.choose_action(epsilon, state)
+                    action = aux.choose_action(epsilon, state, self.Q_MATRIX)
                     next_state, reward_next = cn.get_state_reward(s, self.ACTIONS[action])
 
                     self.Q_MATRIX[aux.convert_to_int(state)][action] = self.q_update(aux.convert_to_int(state), action, aux.convert_to_int(next_state), reward_next, alpha, gamma)
@@ -88,20 +96,23 @@ class q_learning:
                     if reward_next == 300:
                         terminal_state = True
                         wins += 1
+                        back_to_back_wins += 1
                     elif reward_next == -100:
                         terminal_state = True
                         deaths += 1
+                        back_to_back_wins = 0
 
                 print(f"Epoch: {i} complete [=========================================]")
                 print(f"Sucess rate: {100 * (wins/(wins+deaths))}%")
                 
         except KeyboardInterrupt:
-            self.write_q_matrix("resultado.txt")
+            aux.write_q_matrix("resultado.txt", self.Q_MATRIX)
                 
 
 
-        self.write_q_matrix("resultado.txt")
+        aux.write_q_matrix("resultado.txt", self.Q_MATRIX)
         aux.print_table_actions(self.ACTIONS, self.Q_MATRIX)
+
 
 # ======================================== Helper Functions =============================================
 
@@ -131,6 +142,16 @@ class aux:
                 row = list(map(float, line.strip().split()))
                 q_matrix.append(row)
         return q_matrix
+    
+    @classmethod
+    def write_q_matrix(self, filename:str, q_matrix:[[float]]) -> None:
+        """
+        Write the Q matrix to a txt file
+        """
+        with open(filename, 'w') as file:
+            for row in q_matrix:
+                file.write(" ".join(map(str, row)) + '\n')
+    
 
     @classmethod
     def print_table_actions(self, actions: [str], q_table: [[float]]) -> None:
@@ -155,35 +176,18 @@ class aux:
                 file.write(" ".join(map(str, row)) + '\n')
     
     @classmethod
-    def q_table_runner(self, filename:str, port:int, initial_plat:int, initial_dir:str) -> None:
+    def choose_action(self, epsilon:float, state:bin, q_matrix:[[float]]) -> int:
         """
-        Run the table
-        """
-        won = False
-        q_matrix = aux.read_q_matrix(filename)
+        Chooses a actions based on eploitation and exploration
 
-        s = cn.connect(port)
+        0 -> left
+        1 -> right
+        2 -> jump
+        """        
+        if r.random() < epsilon:
+            return r.randint(0, 2)
 
-        platform = initial_plat 
-        direction = initial_dir
-        state = aux.state_pack(platform, direction)
-
-        terminal_state = False
-
-        while not terminal_state:
-            action = self.choose_action(-1, state)
-            next_state, reward_next = cn.get_state_reward(s, self.ACTIONS[action])
-            state = next_state
-
-            # Check for terminal state
-            if reward_next == 300:
-                terminal_state = True
-                won = True
-            elif reward_next == -100:
-                terminal_state = True
-        
-        print(f"Game won: {won}")
-
+        return q_matrix[aux.convert_to_int(state)].index(max(q_matrix[aux.convert_to_int(state)]))
 
 
 
